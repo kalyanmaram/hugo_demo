@@ -1,14 +1,28 @@
-# Use an official Hugo runtime as a parent image
-FROM klakegg/hugo:0.92.0-onbuild AS hugo
+###############
+# Build Stage #
+###############
+FROM razonyang/hugo:exts as builder
 
-# Set the working directory to the Hugo site directory
-WORKDIR /usr/src/app
+# Base URL
+ARG HUGO_BASEURL=http://localhost:8080
+ENV HUGO_BASEURL=${HUGO_BASEURL}
 
-# Copy the current directory contents into the container at /usr/src/app
-COPY . .
+# Build site
+COPY . /src
+RUN hugo --minify --gc --enableGitInfo
 
-# Expose port 1313 for Hugo server
-EXPOSE 1313
+###############
+# Final Stage #
+###############
+FROM razonyang/hugo:nginx
 
-# Command to run the Hugo development server
-CMD ["hugo", "server", "--bind", "0.0.0.0", "--port", "1313", "--baseUrl", "http://localhost:1313"]
+COPY --from=builder /src/public /site
+
+# Optionally, set the NGINX configuration if needed
+# COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose port 80 to the outside world
+EXPOSE 80
+
+# Command to run the Nginx server
+CMD ["nginx", "-g", "daemon off;"]
